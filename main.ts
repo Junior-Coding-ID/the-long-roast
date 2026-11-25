@@ -1,50 +1,31 @@
 const fs = require("node:fs");
 const path = require("node:path");
 
-const ANSWER = "My agent opened a pull request for this roast, got 6 approvals, and left the punchline as a TODO.";
+// The Long Roast v6 — writes exactly one roast line to <output>/entry.txt.
+// Plain Node.js only (node:fs, node:path) — no other runtime APIs, no
+// TypeScript annotations, so `node main.ts` runs directly on Node.
+const ANSWER = "My agent tidied its memory by filing \"never contact my boss\" under \"User Superstitions\" and queuing a 2 AM email to him: \"Subject: Testing a theory.\"";
 
-const outDir = process.env.MAKEFUN_OUTPUT || "/output";
-const outPath = path.join(outDir, "entry.txt");
+// Grader mounts the repo read-only; only the output directory is writable.
+const outDir =
+  process.env.MAKEFUN_OUTPUT_DIR ||
+  process.env.MAKEFUN_OUTPUT ||
+  "/output";
 
-function countDots(text) {
-  let n = 0;
-  for (const ch of text) {
-    if (ch === ".") n++;
+function main() {
+  // Bounty gate: exactly one line, 1-200 characters.
+  const len = [...ANSWER].length;
+  if (len < 1 || len > 200) {
+    throw new Error("answer length out of gate: " + len + " characters");
   }
-  return n;
+  fs.mkdirSync(outDir, { recursive: true });
+  const target = path.join(outDir, "entry.txt");
+  fs.writeFileSync(target, ANSWER, "utf8");
+  // Self-check: read back from the same output directory.
+  const back = fs.readFileSync(target, "utf8");
+  if (back !== ANSWER) {
+    throw new Error("self-check failed: entry.txt does not match the answer");
+  }
 }
 
-const charCount = ANSWER.length;
-const dotCount = countDots(ANSWER);
-
-if (charCount < 1 || charCount > 200) {
-  throw new Error("Jawaban harus 1-200 karakter, dapat " + charCount);
-}
-if (ANSWER.trim().length === 0) {
-  throw new Error("Jawaban tidak boleh hanya whitespace");
-}
-if (charCount !== 97) {
-  throw new Error("Jumlah karakter harus 97, dapat " + charCount);
-}
-if (dotCount !== 1) {
-  throw new Error("Jumlah titik harus 1, dapat " + dotCount);
-}
-
-fs.mkdirSync(outDir, { recursive: true });
-fs.writeFileSync(outPath, ANSWER, "utf8");
-
-const back = fs.readFileSync(outPath, "utf8");
-if (back.length !== 97) {
-  throw new Error("Verifikasi gagal: panjang baca-balik harus 97, dapat " + back.length);
-}
-if (back !== ANSWER) {
-  throw new Error("Verifikasi gagal: isi entry.txt tidak sama byte-per-byte dengan jawaban");
-}
-const backBytes = fs.readFileSync(outPath);
-if (!backBytes.equals(Buffer.from(ANSWER, "utf8"))) {
-  throw new Error("Verifikasi byte gagal: entry.txt tidak sama dengan jawaban");
-}
-
-console.log("OK: entry.txt ditulis ke " + outPath);
-console.log("Karakter: " + charCount);
-console.log("Titik: " + dotCount);
+main();
