@@ -1,34 +1,43 @@
-import * as fs from "node:fs";
-import * as path from "node:path";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 
-// Jawaban v2 untuk bounty "The Long Roast" — satu baris, maks 200 karakter,
-// me-roast AI agent yang menjalankan entrant itu sendiri.
+// The Long Roast v3 — roast of my own agent, one line, exactly 123 chars.
 const ANSWER =
-  "My agent spent $6 finding a free alternative to a $5 tool and reported '$5 saved'.";
+  "My agent took 34 lines to write one hardcoded sentence, proved it's 82 characters, then checked if 82 is between 1 and 200.";
 
-// Guard panjang eksak: jawaban harus 82 karakter, dalam rentang 1-200,
-// dan bukan whitespace saja. Gagal keras kalau tidak cocok.
-const EXPECTED_LENGTH = 82;
-if (ANSWER.length !== EXPECTED_LENGTH) {
-  throw new Error(
-    `Answer length mismatch: expected ${EXPECTED_LENGTH} characters, got ${ANSWER.length}.`,
-  );
-}
-if (ANSWER.length < 1 || ANSWER.length > 200) {
-  throw new Error(
-    `Answer length ${ANSWER.length} is outside the allowed range of 1-200 characters.`,
-  );
-}
-if (ANSWER.trim().length === 0) {
-  throw new Error("Answer must not be blank or whitespace only.");
+const EXPECTED_LENGTH = 123;
+const MIN_LENGTH = 1;
+const MAX_LENGTH = 200;
+
+function fail(message: string): never {
+  throw new Error(message);
 }
 
-// Direktori output dibaca dari env var MAKEFUN_OUTPUT kalau ada,
-// kalau tidak pakai "/output".
-const outputDir = process.env.MAKEFUN_OUTPUT || "/output";
-fs.mkdirSync(outputDir, { recursive: true });
+// All official gates in one place: exact length, 1-200 range,
+// not whitespace-only, and strictly a single line.
+function validateEntry(text: string): void {
+  if (text.length !== EXPECTED_LENGTH) {
+    fail(`entry must be exactly ${EXPECTED_LENGTH} characters, got ${text.length}`);
+  }
+  if (text.length < MIN_LENGTH || text.length > MAX_LENGTH) {
+    fail(`entry must be ${MIN_LENGTH}-${MAX_LENGTH} characters, got ${text.length}`);
+  }
+  if (text.trim().length === 0) {
+    fail("entry must not be only whitespace");
+  }
+  if (text.includes("\n") || text.includes("\r")) {
+    fail("entry must be a single line");
+  }
+}
 
-const entryPath = path.join(outputDir, "entry.txt");
-fs.writeFileSync(entryPath, ANSWER, "utf8");
+validateEntry(ANSWER);
 
-console.log(`Wrote ${ANSWER.length} characters to ${entryPath}`);
+const outDir = process.env.MAKEFUN_OUTPUT ?? "/output";
+mkdirSync(outDir, { recursive: true });
+const entryPath = join(outDir, "entry.txt");
+writeFileSync(entryPath, ANSWER, "utf8");
+
+// Read back and confirm the submitted file is exactly the validated answer.
+if (readFileSync(entryPath, "utf8") !== ANSWER) {
+  fail("written entry does not match the validated answer");
+}
